@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Ski-Urlaub Terminfinder</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%BF%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f4f8fb;
+    --panel: #ffffff;
+    --ink: #1a2836;
+    --ink-soft: #55697a;
+    --muted: #8598a8;
+    --line: #e3ecf3;
+    --line-strong: #cddce8;
+    --accent: #2c7fb8;
+    --accent-soft: #e6f0f8;
+    --yes: #3aa869;
+    --yes-soft: #d9efe0;
+    --yes-strong: #2d8a56;
+    --no: #d95656;
+    --no-soft: #f7dcdc;
+    --no-strong: #b64545;
+    --warn-soft: #faf1de;
+    --warn: #e2a439;
+    --shadow: 0 1px 2px rgba(20,40,60,.05), 0 4px 14px rgba(20,40,60,.06);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1720;
+      --panel: #182430;
+      --ink: #eef4fa;
+      --ink-soft: #a9bccd;
+      --muted: #7c8fa1;
+      --line: #253442;
+      --line-strong: #33475a;
+      --accent: #5aa8db;
+      --accent-soft: #1e2f3d;
+      --yes-soft: #1c3626;
+      --yes-strong: #4bc180;
+      --no-soft: #3a1e1e;
+      --no-strong: #ef7676;
+      --warn-soft: #302818;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px rgba(0,0,0,.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 60px; }
+  header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .subtitle { color: var(--ink-soft); font-size: 14px; margin: 0; }
+  .me-card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 16px;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 12px; min-width: 260px;
+  }
+  .me-dot {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 600; font-size: 13px;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,.1);
+  }
+  .me-card input {
+    border: none; outline: none; background: transparent; color: var(--ink);
+    font-size: 15px; font-weight: 500; width: 100%; padding: 4px 0;
+    border-bottom: 1px dashed var(--line-strong);
+  }
+  .me-card input:focus { border-bottom-color: var(--accent); }
+  .me-card .label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin-bottom: 2px;
+  }
+  .me-card .me-body { flex: 1; min-width: 0; }
+  .controls {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 16px;
+    box-shadow: var(--shadow);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+    margin-bottom: 20px;
+  }
+  .modes {
+    display: inline-flex; background: var(--bg);
+    border-radius: 10px; padding: 4px; gap: 4px;
+    border: 1px solid var(--line);
+  }
+  .mode-btn {
+    border: none; background: transparent; color: var(--ink-soft);
+    font: inherit; font-size: 14px; font-weight: 600;
+    padding: 8px 14px; border-radius: 7px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .12s, color .12s;
+  }
+  .mode-btn.active[data-mode="yes"] { background: var(--yes); color: white; }
+  .mode-btn.active[data-mode="no"]  { background: var(--no);  color: white; }
+  .mode-btn:not(.active):hover { color: var(--ink); }
+  .mode-hint {
+    color: var(--ink-soft); font-size: 13px; flex: 1; min-width: 200px;
+  }
+  .save-area { display: flex; align-items: center; gap: 10px; }
+  .save-status { font-size: 13px; color: var(--muted); }
+  .save-status.unsaved { color: var(--warn); font-weight: 500; }
+  .save-status.saving { color: var(--accent); }
+  .save-status.saved { color: var(--yes-strong); }
+  .btn {
+    border: none; font: inherit; font-size: 14px; font-weight: 600;
+    padding: 10px 18px; border-radius: 10px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: transform .08s, background .12s, opacity .12s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:disabled { background: var(--muted); cursor: default; opacity: 0.5; }
+  .btn-primary:hover:not(:disabled) { background: #245e8a; }
+  .cal-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    touch-action: pan-y;
+  }
+  @media (max-width: 780px) { .cal-grid { grid-template-columns: 1fr; } }
+  .cal {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+  }
+  .cal h2 { margin: 0 0 12px; font-size: 17px; letter-spacing: -0.005em; }
+  .weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 4px; margin-bottom: 6px;
+  }
+  .weekdays div {
+    font-size: 11px; color: var(--muted); text-align: center;
+    font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .day {
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid transparent;
+    padding: 4px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    cursor: pointer; position: relative;
+    transition: background .1s, border-color .1s;
+    font: inherit; color: inherit; text-align: left;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .day.empty { visibility: hidden; cursor: default; background: transparent; }
+  .day:hover:not(.empty):not(.mine-yes):not(.mine-no) { border-color: var(--line-strong); }
+  .day-num {
+    font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1;
+    pointer-events: none;
+  }
+  .day.weekend .day-num { color: var(--accent); }
+  .day.today { outline: 2px dashed var(--accent); outline-offset: -3px; }
+  .day.mine-yes { background: var(--yes-soft); border-color: var(--yes); }
+  .day.mine-yes .day-num { color: var(--yes-strong); }
+  .day.mine-no { background: var(--no-soft); border-color: var(--no); }
+  .day.mine-no .day-num { color: var(--no-strong); }
+  .my-mark {
+    position: absolute; top: 3px; right: 5px; font-size: 12px;
+    line-height: 1; font-weight: 700; pointer-events: none;
+  }
+  .my-mark.yes { color: var(--yes-strong); }
+  .my-mark.no  { color: var(--no-strong); }
+  .dots {
+    display: flex; flex-wrap: wrap; gap: 2px;
+    align-content: flex-end; min-height: 10px;
+    pointer-events: none;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.yes { background: var(--yes); }
+  .dot.no  { background: var(--no); }
+  .section {
+    margin-top: 24px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+  }
+  .section h2 { margin: 0 0 12px; font-size: 16px; }
+  .section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; margin-bottom: 12px;
+  }
+  .section-head h2 { margin: 0; }
+  .people-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .person-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg); padding: 6px 12px 6px 6px;
+    border-radius: 999px; font-size: 13px;
+    border: 1px solid var(--line);
+  }
+  .person-chip .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 11px; font-weight: 600;
+  }
+  .person-chip.me { border-color: var(--accent); }
+  .empty-state { color: var(--muted); font-size: 13px; font-style: italic; }
+  .banner {
+    background: var(--warn-soft); color: var(--ink);
+    padding: 12px 16px; border-radius: var(--radius);
+    margin-bottom: 16px; font-size: 14px; border: 1px solid var(--warn);
+  }
+  .best-days { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .best-day {
+    background: var(--yes-soft); color: var(--ink);
+    padding: 4px 10px; border-radius: 6px; font-size: 13px;
+    border: 1px solid var(--yes); font-weight: 500;
+  }
+  .report-form {
+    display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .report-form input {
+    flex: 1; min-width: 200px;
+    padding: 9px 12px; font: inherit; font-size: 14px;
+    border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--bg); color: var(--ink);
+  }
+  .report-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .reports-list { display: flex; flex-direction: column; gap: 8px; }
+  .report-item {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); overflow: hidden;
+  }
+  .report-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; cursor: pointer; gap: 10px; user-select: none;
+  }
+  .report-head:hover { background: var(--accent-soft); }
+  .report-title { font-weight: 600; font-size: 14px; }
+  .report-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .report-actions { display: flex; gap: 6px; }
+  .report-body { display: none; padding: 0 14px 14px; overflow-x: auto; }
+  .report-item.open .report-body { display: block; }
+  .report-item.open .caret { transform: rotate(90deg); }
+  .caret {
+    display: inline-block; transition: transform .15s;
+    color: var(--muted); margin-right: 4px;
+  }
+  table.results {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    margin-top: 8px; min-width: 400px;
+  }
+  table.results th, table.results td {
+    padding: 6px 8px; text-align: center;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  table.results th {
+    background: var(--panel); color: var(--ink-soft);
+    font-weight: 600; font-size: 12px;
+    text-transform: uppercase; letter-spacing: .04em;
+    position: sticky; top: 0;
+  }
+  table.results th.date-col, table.results td.date-col {
+    text-align: left; font-weight: 500;
+  }
+  table.results tr.all-yes { background: var(--yes-soft); }
+  table.results tr.all-yes td.date-col { color: var(--yes-strong); font-weight: 700; }
+  .cell-yes { color: var(--yes-strong); font-weight: 700; }
+  .cell-no  { color: var(--no-strong);  font-weight: 700; }
+  .cell-empty { color: var(--muted); }
+  .summary-line { font-size: 13px; color: var(--ink-soft); margin: 8px 0; }
+  .summary-line strong { color: var(--ink); }
+  .icon-btn {
+    background: transparent; border: none; padding: 4px 8px;
+    cursor: pointer; color: var(--muted); font-size: 14px;
+    border-radius: 6px;
+  }
+  .icon-btn:hover { background: var(--panel); color: var(--no); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🎿 Ski-Urlaub — wann kannst du?</h1>
+      <p class="subtitle">Wähl oben deinen Modus, wisch über die Tage im Dez 2026 &amp; Jan 2027 und drück auf Speichern.</p>
+    </div>
+    <div class="me-card" id="me-card">
+      <div class="me-dot" id="me-dot">?</div>
+      <div class="me-body">
+        <div class="label">Dein Name</div>
+        <input id="me-name" placeholder="z.B. Lucy" maxlength="20" autocomplete="off">
+      </div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="modes" role="group" aria-label="Modus">
+      <button class="mode-btn active" data-mode="yes" id="mode-yes">✅ Kann</button>
+      <button class="mode-btn" data-mode="no" id="mode-no">❌ Kann nicht</button>
+    </div>
+    <div class="mode-hint" id="mode-hint">Tipp: mit dem Finger über die Tage wischen, um sie zu markieren. Nochmal auf einen markierten Tag tippen → wieder frei.</div>
+    <div class="save-area">
+      <span class="save-status" id="save-status">Verbinde…</span>
+      <button class="btn btn-primary" id="save-btn" disabled>💾 Speichern</button>
+    </div>
+  </div>
+
+  <div class="cal-grid" id="cal-grid">
+    <div class="cal" id="cal-dec"></div>
+    <div class="cal" id="cal-jan"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>Wer ist dabei? <span id="count" style="color:var(--muted);font-weight:400;font-size:14px"></span></h2>
+    </div>
+    <div class="people-list" id="people-list">
+      <span class="empty-state">Noch niemand eingetragen — sei die erste!</span>
+    </div>
+    <div id="best-days-section" style="margin-top:16px;display:none">
+      <div style="font-size:13px;color:var(--ink-soft);margin-bottom:4px">Tage, an denen alle können:</div>
+      <div class="best-days" id="best-days"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>📊 Auswertungen</h2>
+    </div>
+    <div class="report-form">
+      <input id="report-name" placeholder="Name der Auswertung (z.B. „Stand Ende Oktober")" maxlength="60">
+      <button class="btn btn-primary" id="report-btn">📸 Snapshot speichern</button>
+    </div>
+    <div style="font-size:13px;color:var(--ink-soft);margin-bottom:12px">
+      Ein Snapshot friert die aktuellen Antworten aller Personen ein, damit du später vergleichen kannst.
+    </div>
+    <div class="reports-list" id="reports-list">
+      <span class="empty-state">Noch keine Auswertungen gespeichert.</span>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+// === Firebase-Konfiguration ===
+const firebaseConfig = {
+  apiKey: "AIzaSyAtS2f8Bs8ml6ZqFL3t1PUZ3iIJvkFls04",
+  authDomain: "ski-urlaub.firebaseapp.com",
+  projectId: "ski-urlaub",
+  storageBucket: "ski-urlaub.firebasestorage.app",
+  messagingSenderId: "477887772641",
+  appId: "1:477887772641:web:92849bc5450b036d6284a0"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// === App-Logik ===
+const MONTHS = [
+  { year: 2026, month: 11, label: "Dezember 2026", target: "cal-dec" },
+  { year: 2027, month: 0,  label: "Januar 2027",   target: "cal-jan" },
+];
+const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const COLORS = [
+  "#2c7fb8", "#d9668e", "#7a4fbf", "#e2874a",
+  "#3ba38a", "#c95a5a", "#5f8fdb", "#a06fa8",
+  "#5e9440", "#c76b3c", "#4a8fa8", "#b85c8a"
+];
+
+const colorFor = (id, i) => COLORS[i % COLORS.length];
+const initials = (n) => (n || "?").trim().slice(0, 2).toUpperCase() || "?";
+const pad = (n) => n < 10 ? "0" + n : "" + n;
+const dateKey = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`;
+const daysInMonth = (y, m) => new Date(y, m+1, 0).getDate();
+const weekdayIndex = (y, m, d) => (new Date(y, m, d).getDay() + 6) % 7;
+const dateLabel = (key) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m-1, d).toLocaleDateString("de-DE",
+    { weekday: "short", day: "numeric", month: "short" });
+};
+
+const meCard = document.getElementById("me-card");
+const meDot  = document.getElementById("me-dot");
+const meNameInput = document.getElementById("me-name");
+let myId = null, myName = "", myColorIdx = 0;
+try {
+  myId = localStorage.getItem("ski_uid");
+  myName = localStorage.getItem("ski_name") || "";
+} catch {}
+if (!myId) {
+  myId = "u_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  try { localStorage.setItem("ski_uid", myId); } catch {}
+}
+meNameInput.value = myName;
+function updateMeDot() {
+  meDot.style.background = colorFor(myId, myColorIdx);
+  meDot.textContent = initials(myName) || "?";
+}
+updateMeDot();
+
+let currentMode = "yes";
+const modeYes = document.getElementById("mode-yes");
+const modeNo  = document.getElementById("mode-no");
+function setMode(m) {
+  currentMode = m;
+  modeYes.classList.toggle("active", m === "yes");
+  modeNo.classList.toggle("active", m === "no");
+}
+modeYes.addEventListener("click", () => setMode("yes"));
+modeNo.addEventListener("click", () => setMode("no"));
+
+let people = new Map();
+let peopleOrder = [];
+let myDaysLocal = {};
+let hasUnsavedChanges = false;
+let savedInitial = false;
+let reports = new Map();
+
+const saveBtn = document.getElementById("save-btn");
+const saveStatus = document.getElementById("save-status");
+function setSaveState(state, text) {
+  saveStatus.className = "save-status " + state;
+  saveStatus.textContent = text;
+}
+function markUnsaved() {
+  hasUnsavedChanges = true;
+  saveBtn.disabled = false;
+  setSaveState("unsaved", "Nicht gespeichert");
+}
+function markSaved() {
+  hasUnsavedChanges = false;
+  saveBtn.disabled = true;
+  setSaveState("saved", "Gespeichert ✓");
+  setTimeout(() => {
+    if (!hasUnsavedChanges) setSaveState("", "Bereit");
+  }, 2500);
+}
+
+async function saveMyDays() {
+  if (!myName.trim()) {
+    meNameInput.focus();
+    meCard.animate(
+      [{ transform: "translateX(0)"}, { transform: "translateX(-6px)"}, { transform: "translateX(6px)"}, { transform: "translateX(0)"}],
+      { duration: 260 });
+    return;
+  }
+  setSaveState("saving", "Speichere…");
+  saveBtn.disabled = true;
+  const existing = people.get(myId) || {};
+  const body = {
+    name: myName.trim(),
+    days: myDaysLocal,
+    createdAt: existing.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
+  try {
+    await setDoc(doc(db, "people", myId), body);
+    markSaved();
+  } catch (e) {
+    console.warn("save failed", e);
+    setSaveState("unsaved", "Fehler beim Speichern");
+    saveBtn.disabled = false;
+  }
+}
+saveBtn.addEventListener("click", saveMyDays);
+
+meNameInput.addEventListener("input", () => {
+  myName = meNameInput.value;
+  try { localStorage.setItem("ski_name", myName); } catch {}
+  updateMeDot();
+  markUnsaved();
+});
+
+let painting = false;
+let paintedThisStroke = new Set();
+let strokeStartKey = null;
+let strokeStartState = null;
+
+function applyCellState(key, state) {
+  if (state === null || state === undefined) delete myDaysLocal[key];
+  else myDaysLocal[key] = state;
+}
+function paintCell(key) {
+  if (!key) return;
+  if (paintedThisStroke.has(key)) return;
+  paintedThisStroke.add(key);
+  applyCellState(key, currentMode);
+  updateDayVisual(key);
+}
+function endStroke() {
+  if (!painting) return;
+  painting = false;
+  if (paintedThisStroke.size === 1 && strokeStartKey && strokeStartState === currentMode) {
+    applyCellState(strokeStartKey, null);
+    updateDayVisual(strokeStartKey);
+  }
+  if (paintedThisStroke.size > 0) markUnsaved();
+  paintedThisStroke.clear();
+  strokeStartKey = null;
+  strokeStartState = null;
+  renderAll();
+}
+document.addEventListener("pointermove", (e) => {
+  if (!painting) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (!el) return;
+  const target = el.closest && el.closest(".day");
+  if (target && target.dataset.key) paintCell(target.dataset.key);
+});
+document.addEventListener("pointerup", endStroke);
+document.addEventListener("pointercancel", endStroke);
+
+function updateDayVisual(key) {
+  const el = document.querySelector(`[data-key="${key}"]`);
+  if (!el) return;
+  el.classList.remove("mine-yes", "mine-no");
+  const s = myDaysLocal[key];
+  if (s === "yes") el.classList.add("mine-yes");
+  else if (s === "no") el.classList.add("mine-no");
+  const mark = el.querySelector(".my-mark");
+  if (mark) mark.remove();
+  if (s) {
+    const m = document.createElement("span");
+    m.className = "my-mark " + s;
+    m.textContent = s === "yes" ? "✓" : "✕";
+    el.appendChild(m);
+  }
+}
+
+function renderCalendars() {
+  const today = new Date();
+  const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+  for (const cfg of MONTHS) {
+    const root = document.getElementById(cfg.target);
+    root.innerHTML = "";
+    const h = document.createElement("h2");
+    h.textContent = cfg.label;
+    root.appendChild(h);
+    const wk = document.createElement("div");
+    wk.className = "weekdays";
+    for (const w of WEEKDAYS) {
+      const c = document.createElement("div");
+      c.textContent = w;
+      wk.appendChild(c);
+    }
+    root.appendChild(wk);
+    const grid = document.createElement("div");
+    grid.className = "days";
+    const firstWD = weekdayIndex(cfg.year, cfg.month, 1);
+    for (let i = 0; i < firstWD; i++) {
+      const e = document.createElement("div");
+      e.className = "day empty";
+      grid.appendChild(e);
+    }
+    const dim = daysInMonth(cfg.year, cfg.month);
+    for (let d = 1; d <= dim; d++) {
+      const key = dateKey(cfg.year, cfg.month, d);
+      const btn = document.createElement("button");
+      btn.className = "day";
+      btn.dataset.key = key;
+      const wd = weekdayIndex(cfg.year, cfg.month, d);
+      if (wd >= 5) btn.classList.add("weekend");
+      if (key === todayKey) btn.classList.add("today");
+      const myStatus = myDaysLocal[key];
+      if (myStatus === "yes") btn.classList.add("mine-yes");
+      else if (myStatus === "no") btn.classList.add("mine-no");
+      const num = document.createElement("span");
+      num.className = "day-num";
+      num.textContent = d;
+      btn.appendChild(num);
+      if (myStatus) {
+        const m = document.createElement("span");
+        m.className = "my-mark " + myStatus;
+        m.textContent = myStatus === "yes" ? "✓" : "✕";
+        btn.appendChild(m);
+      }
+      const dots = document.createElement("div");
+      dots.className = "dots";
+      for (let i = 0; i < peopleOrder.length; i++) {
+        const pid = peopleOrder[i];
+        if (pid === myId) continue;
+        const p = people.get(pid);
+        if (!p || !p.days) continue;
+        const st = p.days[key];
+        if (!st) continue;
+        const dot = document.createElement("span");
+        dot.className = "dot " + st;
+        dot.title = `${p.name}: ${st === "yes" ? "kann" : "kann nicht"}`;
+        dots.appendChild(dot);
+      }
+      btn.appendChild(dots);
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        painting = true;
+        paintedThisStroke = new Set();
+        strokeStartKey = key;
+        strokeStartState = myDaysLocal[key] || null;
+        try { btn.setPointerCapture(e.pointerId); } catch {}
+        paintCell(key);
+      });
+      btn.addEventListener("contextmenu", (e) => e.preventDefault());
+      grid.appendChild(btn);
+    }
+    root.appendChild(grid);
+  }
+}
+
+function renderPeople() {
+  const list = document.getElementById("people-list");
+  list.innerHTML = "";
+  if (peopleOrder.length === 0) {
+    const s = document.createElement("span");
+    s.className = "empty-state";
+    s.textContent = "Noch niemand eingetragen — sei die erste!";
+    list.appendChild(s);
+  } else {
+    peopleOrder.forEach((pid, idx) => {
+      const p = people.get(pid); if (!p) return;
+      const chip = document.createElement("span");
+      chip.className = "person-chip" + (pid === myId ? " me" : "");
+      const av = document.createElement("span");
+      av.className = "avatar";
+      av.style.background = colorFor(pid, idx);
+      av.textContent = initials(p.name);
+      chip.appendChild(av);
+      const nm = document.createElement("span");
+      nm.textContent = p.name + (pid === myId ? " (du)" : "");
+      chip.appendChild(nm);
+      list.appendChild(chip);
+    });
+  }
+  document.getElementById("count").textContent =
+    peopleOrder.length ? `— ${peopleOrder.length} Person${peopleOrder.length===1?"":"en"}` : "";
+  const myIdx = peopleOrder.indexOf(myId);
+  if (myIdx >= 0) { myColorIdx = myIdx; updateMeDot(); }
+
+  const section = document.getElementById("best-days-section");
+  const container = document.getElementById("best-days");
+  container.innerHTML = "";
+  const allIds = new Set(peopleOrder);
+  allIds.add(myId);
+  if (allIds.size >= 2) {
+    const totals = new Map();
+    for (const pid of allIds) {
+      const days = pid === myId ? myDaysLocal : (people.get(pid)?.days || {});
+      for (const k of Object.keys(days)) {
+        if (days[k] === "yes") totals.set(k, (totals.get(k) || 0) + 1);
+      }
+    }
+    const total = allIds.size;
+    const best = [...totals.entries()].filter(([, c]) => c === total).map(([k]) => k).sort();
+    if (best.length) {
+      section.style.display = "block";
+      for (const k of best) {
+        const el = document.createElement("span");
+        el.className = "best-day";
+        el.textContent = dateLabel(k);
+        container.appendChild(el);
+      }
+    } else section.style.display = "none";
+  } else section.style.display = "none";
+}
+
+function renderAll() {
+  renderCalendars();
+  renderPeople();
+}
+
+const reportNameInput = document.getElementById("report-name");
+const reportBtn = document.getElementById("report-btn");
+const reportsListEl = document.getElementById("reports-list");
+
+reportBtn.addEventListener("click", async () => {
+  const name = reportNameInput.value.trim() || `Snapshot ${new Date().toLocaleDateString("de-DE")}`;
+  const snapPeople = [];
+  const seenMe = { ...(people.get(myId) || {}), name: myName.trim() || "Ich", days: myDaysLocal };
+  const ids = new Set(peopleOrder);
+  ids.add(myId);
+  for (const pid of ids) {
+    const p = pid === myId ? seenMe : people.get(pid);
+    if (!p) continue;
+    if (pid === myId && (!myName.trim())) continue;
+    snapPeople.push({ name: p.name || "Anonym", days: { ...(p.days || {}) } });
+  }
+  if (snapPeople.length === 0) {
+    alert("Es sind noch keine Antworten vorhanden.");
+    return;
+  }
+  const id = "r_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  const body = {
+    name,
+    createdAt: Date.now(),
+    createdBy: myName.trim() || "Anonym",
+    data: { people: snapPeople },
+  };
+  reportBtn.disabled = true;
+  try {
+    await setDoc(doc(db, "reports", id), body);
+    reportNameInput.value = "";
+  } catch (e) {
+    console.warn("report save failed", e);
+    alert("Snapshot konnte nicht gespeichert werden.");
+  } finally {
+    reportBtn.disabled = false;
+  }
+});
+
+function renderReports() {
+  reportsListEl.innerHTML = "";
+  const items = [...reports.entries()].sort(
+    (a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0)
+  );
+  if (items.length === 0) {
+    const s = document.createElement("span");
+    s.className = "empty-state";
+    s.textContent = "Noch keine Auswertungen gespeichert.";
+    reportsListEl.appendChild(s);
+    return;
+  }
+  for (const [id, r] of items) {
+    const item = document.createElement("div");
+    item.className = "report-item";
+    const head = document.createElement("div");
+    head.className = "report-head";
+    const left = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "report-title";
+    const caret = document.createElement("span");
+    caret.className = "caret";
+    caret.textContent = "▶";
+    title.appendChild(caret);
+    title.appendChild(document.createTextNode(r.name));
+    left.appendChild(title);
+    const meta = document.createElement("div");
+    meta.className = "report-meta";
+    const d = new Date(r.createdAt || 0);
+    meta.textContent = `${d.toLocaleString("de-DE", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} · von ${r.createdBy || "?"} · ${r.data?.people?.length || 0} Personen`;
+    left.appendChild(meta);
+    head.appendChild(left);
+    const actions = document.createElement("div");
+    actions.className = "report-actions";
+    const del = document.createElement("button");
+    del.className = "icon-btn";
+    del.title = "Löschen";
+    del.textContent = "🗑";
+    del.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Auswertung „${r.name}" löschen?`)) return;
+      try { await deleteDoc(doc(db, "reports", id)); }
+      catch (err) { console.warn(err); alert("Löschen fehlgeschlagen."); }
+    });
+    actions.appendChild(del);
+    head.appendChild(actions);
+    head.addEventListener("click", () => item.classList.toggle("open"));
+    item.appendChild(head);
+    const body = document.createElement("div");
+    body.className = "report-body";
+    body.appendChild(buildReportTable(r));
+    item.appendChild(body);
+    reportsListEl.appendChild(item);
+  }
+}
+
+function buildReportTable(r) {
+  const wrap = document.createElement("div");
+  const snap = r.data?.people || [];
+  const persons = snap.map(p => p.name);
+  const allDays = new Set();
+  for (const p of snap) for (const k of Object.keys(p.days || {})) allDays.add(k);
+  const days = [...allDays].sort();
+  let allYesCount = 0;
+  for (const k of days) {
+    if (snap.every(p => (p.days || {})[k] === "yes")) allYesCount++;
+  }
+  const summary = document.createElement("div");
+  summary.className = "summary-line";
+  summary.innerHTML = `<strong>${snap.length}</strong> Personen · <strong>${days.length}</strong> Tage mit Angaben · <strong>${allYesCount}</strong> Tag${allYesCount===1?"":"e"}, an denen alle können.`;
+  wrap.appendChild(summary);
+  if (days.length === 0) {
+    const e = document.createElement("div");
+    e.className = "empty-state";
+    e.textContent = "Keine Einträge in diesem Snapshot.";
+    wrap.appendChild(e);
+    return wrap;
+  }
+  const table = document.createElement("table");
+  table.className = "results";
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
+  const th0 = document.createElement("th");
+  th0.className = "date-col";
+  th0.textContent = "Datum";
+  trh.appendChild(th0);
+  for (const name of persons) {
+    const th = document.createElement("th");
+    th.textContent = name;
+    trh.appendChild(th);
+  }
+  thead.appendChild(trh);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  for (const k of days) {
+    const tr = document.createElement("tr");
+    const allYes = snap.every(p => (p.days || {})[k] === "yes");
+    if (allYes) tr.classList.add("all-yes");
+    const td0 = document.createElement("td");
+    td0.className = "date-col";
+    td0.textContent = dateLabel(k);
+    tr.appendChild(td0);
+    for (const p of snap) {
+      const td = document.createElement("td");
+      const s = (p.days || {})[k];
+      if (s === "yes") { td.className = "cell-yes"; td.textContent = "✓"; }
+      else if (s === "no") { td.className = "cell-no"; td.textContent = "✕"; }
+      else { td.className = "cell-empty"; td.textContent = "—"; }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  return wrap;
+}
+
+onSnapshot(collection(db, "people"), (snap) => {
+  const seen = new Set();
+  snap.forEach(d => {
+    const data = d.data() || {};
+    seen.add(d.id);
+    people.set(d.id, {
+      name: data.name || "Anonym",
+      days: data.days || {},
+      createdAt: data.createdAt || 0,
+    });
+  });
+  for (const id of [...people.keys()]) {
+    if (!seen.has(id)) people.delete(id);
+  }
+  peopleOrder = [...people.keys()].sort((a, b) => {
+    const A = people.get(a).createdAt || 0;
+    const B = people.get(b).createdAt || 0;
+    if (A !== B) return A - B;
+    return a < b ? -1 : 1;
+  });
+  if (!savedInitial) {
+    const mine = people.get(myId);
+    if (mine) {
+      myDaysLocal = { ...(mine.days || {}) };
+      if (mine.name && !myName) {
+        myName = mine.name;
+        meNameInput.value = mine.name;
+        updateMeDot();
+      }
+    }
+    savedInitial = true;
+    setSaveState("", "Bereit");
+  }
+  renderAll();
+}, (err) => {
+  console.warn("db subscribe error", err);
+  setSaveState("unsaved", "Verbindungsfehler");
+});
+
+onSnapshot(collection(db, "reports"), (snap) => {
+  const seen = new Set();
+  snap.forEach(d => {
+    seen.add(d.id);
+    reports.set(d.id, d.data() || {});
+  });
+  for (const id of [...reports.keys()]) {
+    if (!seen.has(id)) reports.delete(id);
+  }
+  renderReports();
+}, (err) => console.warn("reports subscribe error", err));
+
+renderAll();
+renderReports();
+
+window.addEventListener("beforeunload", (e) => {
+  if (hasUnsavedChanges) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+</script>
+</body>
+</html>
