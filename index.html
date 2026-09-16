@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="de">
 <head>
@@ -281,6 +282,60 @@
     border-radius: 6px;
   }
   .icon-btn:hover { background: var(--panel); color: var(--no); }
+
+  /* View mode + modal */
+  .mode-btn.active[data-mode="view"] { background: var(--accent); color: white; }
+  body.mode-view .day:not(.empty) { cursor: help; }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(10,20,30,.55);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 100;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    max-width: 420px; width: 100%;
+    max-height: 85vh; overflow-y: auto;
+    padding: 20px;
+  }
+  .modal h3 {
+    margin: 0 0 12px; font-size: 18px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal .close-x {
+    background: transparent; border: none; font-size: 22px;
+    color: var(--muted); cursor: pointer; padding: 0 4px; line-height: 1;
+  }
+  .modal .close-x:hover { color: var(--ink); }
+  .modal-section {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .modal-section:first-of-type { border-top: none; padding-top: 0; }
+  .modal-section h4 {
+    margin: 0 0 8px; font-size: 13px;
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .modal-section h4.yes { color: var(--yes-strong); }
+  .modal-section h4.no  { color: var(--no-strong); }
+  .modal-section h4.unset { color: var(--muted); }
+  .modal-people {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .modal-person {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 10px; background: var(--bg);
+    border-radius: 8px; font-size: 14px;
+  }
+  .modal-person .avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 11px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .modal-empty { color: var(--muted); font-size: 13px; font-style: italic; }
 </style>
 </head>
 <body>
@@ -304,8 +359,9 @@
     <div class="modes" role="group" aria-label="Modus">
       <button class="mode-btn active" data-mode="yes" id="mode-yes">✅ Kann</button>
       <button class="mode-btn" data-mode="no" id="mode-no">❌ Kann nicht</button>
+      <button class="mode-btn" data-mode="view" id="mode-view">👀 Ansehen</button>
     </div>
-    <div class="mode-hint" id="mode-hint">Tipp: mit dem Finger über die Tage wischen, um sie zu markieren. Nochmal auf einen markierten Tag tippen → wieder frei.</div>
+    <div class="mode-hint" id="mode-hint">Tipp: mit dem Finger über die Tage wischen, um sie zu markieren. Nochmal auf einen markierten Tag tippen → wieder frei. Im „Ansehen"-Modus zeigt ein Tippen wer kann/nicht kann.</div>
     <div class="save-area">
       <span class="save-status" id="save-status">Verbinde…</span>
       <button class="btn btn-primary" id="save-btn" disabled>💾 Speichern</button>
@@ -327,6 +383,13 @@
     <div id="best-days-section" style="margin-top:16px;display:none">
       <div style="font-size:13px;color:var(--ink-soft);margin-bottom:4px">Tage, an denen alle können:</div>
       <div class="best-days" id="best-days"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" id="modal">
+      <h3><span id="modal-title">Tag</span><button class="close-x" id="modal-close" aria-label="Schließen">✕</button></h3>
+      <div id="modal-content"></div>
     </div>
   </div>
 
@@ -409,15 +472,94 @@ function updateMeDot() {
 updateMeDot();
 
 let currentMode = "yes";
-const modeYes = document.getElementById("mode-yes");
-const modeNo  = document.getElementById("mode-no");
+const modeYes  = document.getElementById("mode-yes");
+const modeNo   = document.getElementById("mode-no");
+const modeView = document.getElementById("mode-view");
 function setMode(m) {
   currentMode = m;
   modeYes.classList.toggle("active", m === "yes");
   modeNo.classList.toggle("active", m === "no");
+  modeView.classList.toggle("active", m === "view");
+  document.body.classList.toggle("mode-view", m === "view");
 }
 modeYes.addEventListener("click", () => setMode("yes"));
 modeNo.addEventListener("click", () => setMode("no"));
+modeView.addEventListener("click", () => setMode("view"));
+
+// Modal
+const modalBackdrop = document.getElementById("modal-backdrop");
+const modalTitle    = document.getElementById("modal-title");
+const modalContent  = document.getElementById("modal-content");
+document.getElementById("modal-close").addEventListener("click", closeModal);
+modalBackdrop.addEventListener("click", (e) => {
+  if (e.target === modalBackdrop) closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});
+function closeModal() { modalBackdrop.classList.remove("open"); }
+
+function openDayModal(key) {
+  modalTitle.textContent = dateLabel(key);
+  modalContent.innerHTML = "";
+
+  const yesPeople = [], noPeople = [], unsetPeople = [];
+  const allIds = new Set(peopleOrder);
+  allIds.add(myId);
+  for (const pid of allIds) {
+    const isMe = pid === myId;
+    const p = isMe
+      ? { name: myName.trim() || "Ich", days: myDaysLocal }
+      : people.get(pid);
+    if (!p) continue;
+    if (isMe && !myName.trim() && Object.keys(myDaysLocal).length === 0) continue;
+    const st = (p.days || {})[key];
+    const entry = { pid, name: p.name + (isMe ? " (du)" : ""), isMe };
+    if (st === "yes") yesPeople.push(entry);
+    else if (st === "no") noPeople.push(entry);
+    else unsetPeople.push(entry);
+  }
+
+  function section(title, cls, list, emptyText) {
+    const sec = document.createElement("div");
+    sec.className = "modal-section";
+    const h = document.createElement("h4");
+    h.className = cls;
+    h.textContent = title + ` (${list.length})`;
+    sec.appendChild(h);
+    const body = document.createElement("div");
+    body.className = "modal-people";
+    if (list.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "modal-empty";
+      empty.textContent = emptyText;
+      body.appendChild(empty);
+    } else {
+      for (const e of list) {
+        const row = document.createElement("div");
+        row.className = "modal-person";
+        const av = document.createElement("span");
+        av.className = "avatar";
+        const idx = peopleOrder.indexOf(e.pid);
+        av.style.background = colorFor(e.pid, idx >= 0 ? idx : 0);
+        av.textContent = initials(e.name);
+        row.appendChild(av);
+        const nm = document.createElement("span");
+        nm.textContent = e.name;
+        row.appendChild(nm);
+        body.appendChild(row);
+      }
+    }
+    sec.appendChild(body);
+    return sec;
+  }
+  modalContent.appendChild(section("✅ Kann", "yes", yesPeople, "Noch niemand"));
+  modalContent.appendChild(section("❌ Kann nicht", "no", noPeople, "Niemand"));
+  if (unsetPeople.length > 0) {
+    modalContent.appendChild(section("⚪ Noch nicht eingetragen", "unset", unsetPeople, ""));
+  }
+  modalBackdrop.classList.add("open");
+}
 
 let people = new Map();
 let peopleOrder = [];
@@ -601,6 +743,10 @@ function renderCalendars() {
       btn.appendChild(dots);
       btn.addEventListener("pointerdown", (e) => {
         e.preventDefault();
+        if (currentMode === "view") {
+          openDayModal(key);
+          return;
+        }
         painting = true;
         paintedThisStroke = new Set();
         strokeStartKey = key;
